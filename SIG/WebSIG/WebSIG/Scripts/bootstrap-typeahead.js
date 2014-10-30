@@ -26,7 +26,7 @@
  /* TYPEAHEAD PUBLIC CLASS DEFINITION
   * ================================= */
 
-  var Typeahead = function (element, options) {
+  var Typeahead = function (element, options) {      
     this.$element = $(element)
     this.options = $.extend({}, $.fn.typeahead.defaults, options)
     this.matcher = this.options.matcher || this.matcher
@@ -80,7 +80,7 @@
 
   , lookup: function (event) {
       var items
-
+    //  alert('Hola1');
       this.query = this.$element.val()
 
       if (!this.query || this.query.length < this.options.minLength) {
@@ -294,6 +294,9 @@
   var old = $.fn.typeahead
 
   $.fn.typeahead = function (option) {
+
+      
+
     return this.each(function () {
       var $this = $(this)
         , data = $this.data('typeahead')
@@ -327,6 +330,7 @@
   * ================== */
 
   $(document).on('focus.typeahead.data-api', '[data-provide="typeahead"]', function (e) {
+      
     var $this = $(this)
     if ($this.data('typeahead')) return
     $this.typeahead($this.data())
