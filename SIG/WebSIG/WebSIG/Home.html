@@ -156,7 +156,7 @@
               });
         });*/
         $(document).ready(function () {
-            $("#address").keyup(function () {
+            //$("#address").keyup(function () {
                 //$("input").css("background-color", "orange");
                // alert('hsja');
                 candidatos($("#address").val());
@@ -178,8 +178,8 @@
                     layersRequest.then(
                       function (response) {
                           console.log("Success: ", response);
-                          var obj = JSON.parse(response.candidates);
-                          alert(obj);
+                          //var obj = JSON.parse(response.candidates);
+                        //  alert(obj);
                       }, function (error) {
                           console.log("Error: ", error.message);
                       });
