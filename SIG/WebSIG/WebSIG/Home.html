@@ -71,6 +71,7 @@
             // listen for button click then geocode
             registry.byId("locate").on("click", locate);
 
+
             map.infoWindow.resize(200, 125);
 
             function locate() {
@@ -85,6 +86,10 @@
                 };
                 locator.addressToLocations(options);
             }
+
+
+
+            
 
             function showResults(evt) {
                 var symbol = new SimpleMarkerSymbol();
@@ -155,37 +160,143 @@
                   console.log("Error: ", error.message);
               });
         });*/
+        
         $(document).ready(function () {
-            //$("#address").keyup(function () {
-                //$("input").css("background-color", "orange");
-               // alert('hsja');
-                candidatos($("#address").val());
+            $("#ruta").click(function () {
+                // alert('Hola');
+
+                $('input[type=text]').each(function () {
+                    candidatos($(this).val());
+                    //arrText.push($(this).val());
+                });
+
+               
             });
         });
-       
+
+
+       // registry.byId("ruta").on("click", candidatos());
+
+        function insertarCoordenadaRuta(x, y) {
+
+
+            require(["esri/request"],
+                function (esriRequest) {
+                    var layerUrl = "http://tasks.arcgisonline.com/ArcGIS/rest/services/NetworkAnalysis/ESRI_Route_NA/NAServer/Long_Route";
+                    var layersRequest = esriRequest({
+                        url: layerUrl,
+                        content: { SingleLine: text, f: "json" },
+                        handleAs: "json",
+                        callbackParamName: "callback"
+                    });
+                    layersRequest.then(
+                      function (data) {
+                          console.log("Success: ", data);
+
+                          /*var res = data['candidates'];
+
+                          $.each(res, function (i, val) {
+
+                              $.each(val, function (k, v) {
+                                  //  console.log(k + " : " + v + " -- " + k[v]);
+                                  if (k == 'location') {
+
+                                      for (var property in v) {
+                                          console.log('Prueba' + v['x'] + ': ' + v['y'] + '; ');
+                                          insertarCoordenadaRuta(v['x'], v['y']);
+                                      }
+                                  }
+                              });
+                             
+                          });*/
+
+                      }, function (error) {
+                          console.log("Error: ", error.message);
+                      });
+                });
+
+
+        }
+
+
 
         function candidatos(textoEntrada) {
-          //  alert("Entrada = " + textoEntrada);
+
+          //  alert("Entrada = " + $("#address").val() + ',' + $("#address1").val() + ',' + $("#address2").val());
+            var text = textoEntrada; //$("#address").val() + ',' + $("#address1").val() + ',' + $("#address2").val();
+           // alert(text);
+
+            
             require(["esri/request"],
                 function (esriRequest) {
                     var layerUrl = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates";
                     var layersRequest = esriRequest({
                         url: layerUrl,
-                        content: { SingleLine: textoEntrada, maxLocations: "3", f: "json" },
+                        content: { SingleLine: text,  f: "json" },
                         handleAs: "json",
                         callbackParamName: "callback"
                     });
                     layersRequest.then(
-                      function (response) {
-                          console.log("Success: ", response);
-                          //var obj = JSON.parse(response.candidates);
-                        //  alert(obj);
+                      function (data) {
+                          console.log("Success: ", data);
+
+                          //var $dd = $.parseJSON(data.response);
+                          /*
+                          for (var index in data) {
+                              // you can show both index and value to know how the array is indexed in javascript (but it should be the same way it was in the php script)
+                              alert("index:" + index + "\n value" + data['candidates']);
+
+                          }*/
+
+                          var res = data['candidates'];
+
+                          $.each(res, function (i, val) {
+
+                              $.each(val, function (k, v) {
+                                  //  console.log(k + " : " + v + " -- " + k[v]);
+                                  if (k == 'location') {
+                                     
+                                      for (var property in v) {
+                                          console.log('Prueba' + v['x'] + ': ' + v['y'] + '; ');
+                                          insertarCoordenadaRuta(v['x'],v['y']);
+                                      }
+                                  }
+                              });
+                             // console.log(k + " : " + v[k]);
+                          });
+
+                          
+
+                        /*  $(data).each(function (index, el) {
+                             // alert();
+
+                              $(el['candidates']).each(function (i, val) {
+                                  $.each(val, function (k, v) {
+                                      console.log(k + " : " + v);
+                                  });
+                              });
+
+                          });
+
+
+                        //  var oneval = $dd.filter('#candidates').text();
+                         // alert($dd);
+                         
+                         console.log("Success: ", response);
+                          var json = $.parseJSON(response);
+
+                          $(json).each(function (i, val) {
+                              $.each(val, function (k, v) {
+                                  console.log(k + " : " + v);
+                              });
+                          });*/
+                          
                       }, function (error) {
                           console.log("Error: ", error.message);
                       });
                 });
         }
-        
+
         
         
         
@@ -210,13 +321,27 @@
         
 
         <button id="locate" type="button" class="btn btn-lg btn-primary" data-dojo-type="dijit/form/Button">Buscar</button>
-         <br>
+         <br/>
 
         <input id="address" type="text" class="span3" style="margin: 0 auto;" data-provide="typeahead" data-items="4" 
                
               data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
          <!-- data-source ="candidatos('starbucks')" />-->
-          <br>
+          <br/>
+           <input id="address1" type="text" class="span3" style="margin: 0 auto;" data-provide="typeahead" data-items="4" 
+               
+              data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
+          <br/>
+
+          <input id="address2" type="text" class="span3" style="margin: 0 auto;" data-provide="typeahead" data-items="4" 
+               
+              data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
+
+          <br/>
+
+            <button id="ruta" type="button" >Generar Ruta</button>
+         <br/>
+
 
       </div>
 
