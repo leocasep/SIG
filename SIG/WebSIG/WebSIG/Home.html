@@ -35,11 +35,13 @@
     <script src="Scripts/jquery-2.1.1.min.js"></script>
       <script src="Scripts/jquery-2.1.1.intellisense.js"></script>
       <script src="Scripts/jquery.validate.js"></script>
+      <script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
       <script src="Scripts/bootstrap.js"></script>
       <script src="Scripts/bootstrap-typeahead.js"></script>
     <script src="http://js.arcgis.com/3.11/"></script>
     <script>
-        var map, locator;
+        var map, locator, pointCollection;
+        var coordenadasRuta = [];
 
         require([
           "esri/map", "esri/tasks/locator", "esri/graphic",
@@ -70,26 +72,9 @@
 
             // listen for button click then geocode
             registry.byId("locate").on("click", locate);
-
+            
 
             map.infoWindow.resize(200, 125);
-
-            function locate() {
-                map.graphics.clear();
-                var address = {
-                    "SingleLine": dom.byId("address").value
-                };
-                locator.outSpatialReference = map.spatialReference;
-                var options = {
-                    address: address,
-                    outFields: ["Loc_name"]
-                };
-                locator.addressToLocations(options);
-            }
-
-
-
-            
 
             function showResults(evt) {
                 var symbol = new SimpleMarkerSymbol();
@@ -141,104 +126,173 @@
         });
     </script>
 
-    <script>        
-        
-        /*
-        require(["esri/request"], 
-            function(esriRequest) {
-            var layerUrl = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Demographics/ESRI_Census_USA/MapServer/layers";
-            var layersRequest = esriRequest({
-                url: layerUrl,
-                content: { f: "json" },
-                handleAs: "json",
-                callbackParamName: "callback"
+    <script>
+        function locate() {
+            map.graphics.clear();
+            var address = {
+                "SingleLine": $("#address").val()
+            };
+            locator.outSpatialReference = map.spatialReference;
+            var options = {
+                address: address,
+                maxLocations: 1,
+                outFields: ["*"]
+            };
+            locator.addressToLocations(options).then(function (data) {
+                console.log(data);
+                coordenadasRuta.push([data[0]['attributes']['X'], data[0]['attributes']['Y']]);
+                console.log(coordenadasRuta);
             });
-            layersRequest.then(
-              function(response) {
-                  console.log("Success: ", response.layers);
-              }, function(error) {
-                  console.log("Error: ", error.message);
-              });
-        });*/
-        
+        }
+
         $(document).ready(function () {
+            $('#address').keyup(function () {
+                sugerirCandidatos($(this).val());
+            });
+            $('#agregarLugar').click(function () {
+                $('#stops').val($('#stops').val() + $('#address').val() + '\n');
+                locate();
+            });
             $("#ruta").click(function () {
-                // alert('Hola');
-
-                $('input[type=text]').each(function () {
-                    candidatos($(this).val());
-                    //arrText.push($(this).val());
-                });
-
-               
+                var lugares = $('#stops').val().toString().trim().split('\n');
+                generarRuta();
             });
         });
 
-
-       // registry.byId("ruta").on("click", candidatos());
-
-        function insertarCoordenadaRuta(x, y) {
-
-
+        function generarRuta() {
+            var stops = '';
+            for (var i in coordenadasRuta) {
+                stops += i < coordenadasRuta.length - 1 ? coordenadasRuta[i][0] + ', ' + coordenadasRuta[i][1] + '; ' : coordenadasRuta[i][0] + ', ' + coordenadasRuta[i][1];
+            }
             require(["esri/request"],
                 function (esriRequest) {
-                    var layerUrl = "http://tasks.arcgisonline.com/ArcGIS/rest/services/NetworkAnalysis/ESRI_Route_NA/NAServer/Long_Route";
+                    var layerUrl = "http://route.arcgis.com/ArcGIS/rest/services/World/Route/NAServer/Route_World/solve";
                     var layersRequest = esriRequest({
                         url: layerUrl,
-                        content: { SingleLine: text, f: "json" },
+                        content: { token: 'pbgEdBaZ8xtrPgwE6581AyppOSnz1vhv6KXFle9C-ndl2Mma9iADu5pXuALwZCJkWCIxCevBu5TKJXMYqJtAMITwQOz8U_wWC8IKr-tB06oB6QCXP0uDKPTK-24ssETzYG9vruEw0NvYoVP0j0N0-w..', stops: stops, f: "json" },
                         handleAs: "json",
                         callbackParamName: "callback"
                     });
                     layersRequest.then(
                       function (data) {
                           console.log("Success: ", data);
-
-                          /*var res = data['candidates'];
-
-                          $.each(res, function (i, val) {
-
-                              $.each(val, function (k, v) {
-                                  //  console.log(k + " : " + v + " -- " + k[v]);
-                                  if (k == 'location') {
-
-                                      for (var property in v) {
-                                          console.log('Prueba' + v['x'] + ': ' + v['y'] + '; ');
-                                          insertarCoordenadaRuta(v['x'], v['y']);
-                                      }
+                           
+                          require(["esri/graphic"],
+                              function (Graphic) {
+                                  var lineas = [];
+                                  for (i = 0; i < data['routes']['features'][0]['geometry']['paths'][0].length - 1; i++) {
+                                      lineas.push([data['routes']['features'][0]['geometry']['paths'][0][i], data['routes']['features'][0]['geometry']['paths'][0][i + 1]])
                                   }
-                              });
-                             
-                          });*/
+                                  var polilinea = { geometry: { paths: lineas, "spatialReference": { "wkid": 4326 } }, "symbol": { "color": [0, 255, 0, 255], "width": 5, "type": "esriSLS", "style": "esriSLSSolid" } };
+                                  var gra = new Graphic(polilinea);
+                                  map.graphics.add(gra);
 
-                      }, function (error) {
-                          console.log("Error: ", error.message);
+                                  var routeLayer = new esri.layers.FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
+                                      mode: esri.layers.FeatureLayer.MODE_ONDEMAND,
+                                      outFields: ["*"]
+                                  });
+                                  //console.log("Success: ", routeLayer);
+                                  //map.addLayers([routeLayer]);
+                                  /*var res = data['candidates'];
+        
+                                  $.each(res, function (i, val) {
+        
+                                      $.each(val, function (k, v) {
+                                          //  console.log(k + " : " + v + " -- " + k[v]);
+                                          if (k == 'location') {
+        
+                                              for (var property in v) {
+                                                  console.log('Prueba' + v['x'] + ': ' + v['y'] + '; ');
+                                                  insertarCoordenadaRuta(v['x'], v['y']);
+                                              }
+                                          }
+                                      });
+                                     
+                                  });*/
+
+                              }, function (error) {
+                                  console.log("Error: ", error.message);
+                              });
                       });
                 });
 
 
         }
 
-
+        function sugerirCandidatos(texto) {
+            if (texto.length > 0) {
+                var params = { text: texto };
+                locator.suggestLocations(params).then(function (suggestions) {
+                    var sugerencias = [];
+                    $.each(suggestions, function (i, val) {
+                        sugerencias.push( val['text']);
+                    });
+                    console.log(sugerencias);
+                    $('#address').autocomplete({
+                        source: sugerencias
+                    }).data("ui-autocomplete")._renderItem = function (ul, item) {
+                        return $("<li>").data("item.autocomplete", item).append("<a>" + item.value + "</a>").appendTo(ul);
+                    };
+                    console.log(suggestions); //an array of suggestion objects.
+                });
+            }
+        }
 
         function candidatos(textoEntrada) {
-
-          //  alert("Entrada = " + $("#address").val() + ',' + $("#address1").val() + ',' + $("#address2").val());
-            var text = textoEntrada; //$("#address").val() + ',' + $("#address1").val() + ',' + $("#address2").val();
-           // alert(text);
-
-            
-            require(["esri/request"],
+            var address = {
+                "SingleLine": textoEntrada
+            };
+            locator.outSpatialReference = map.spatialReference;
+            var options = {
+                address: address,
+                outFields: ["Loc_name"],
+                countryCode: "US"
+            };
+            locator.addressToLocations(options).then(function (data) {
+                console.log(data);
+            });
+        }
+            /*require(["esri/request"],
                 function (esriRequest) {
-                    var layerUrl = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates";
+                    var addresses = { "records": [] };
+                    for (var i = 0; i < textoEntrada.length; i++) {
+                        addresses.records.push({
+                            "attributes": {
+                                "OBJECTID": i,
+                                "SingleLine": textoEntrada[i]
+                            }
+                        });
+                    }
+                    var layerUrl = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/geocodeAddresses";
+
                     var layersRequest = esriRequest({
-                        url: layerUrl,
-                        content: { SingleLine: text,  f: "json" },
+                        url: 'http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/geocodeAddresses',
+                        content: {
+                            token: 'y4NOtwtUnyLDj-GJI8_CEKdt_S10PppORUku0S5zF24ye94T-82OKF8WXNsZvYqkhFF7inZ6GIOyCG7zLK4JMHw1H-D1vVmxM75mWU_DJQQJqMEyBuElRNTwcS7CeukjBiBX1Y6GPwVfWp2iW4Mc8A..',
+                            addresses:{
+                                "records": [
+                                        {
+                                            "attributes": {
+                                                "OBJECTID": '1',
+                                                "SingleLine": "380 New York St., Redlands, CA, 92373",
+                                            }
+                                        },
+                                   {
+                                       "attributes": {
+                                           "OBJECTID": '2',
+                                           "SingleLine": "1 World Way, Los Angeles, CA, 90045",
+                                       }
+                                   }
+                                ]
+                            },
+                            f: "pjson"
+                        },
                         handleAs: "json",
                         callbackParamName: "callback"
                     });
                     layersRequest.then(
                       function (data) {
-                          console.log("Success: ", data);
+                          console.log("Success: ", data);*/
 
                           //var $dd = $.parseJSON(data.response);
                           /*
@@ -247,7 +301,7 @@
                               alert("index:" + index + "\n value" + data['candidates']);
 
                           }*/
-
+                          /*
                           var res = data['candidates'];
 
                           $.each(res, function (i, val) {
@@ -258,13 +312,13 @@
                                      
                                       for (var property in v) {
                                           console.log('Prueba' + v['x'] + ': ' + v['y'] + '; ');
-                                          insertarCoordenadaRuta(v['x'],v['y']);
                                       }
                                   }
                               });
                              // console.log(k + " : " + v[k]);
                           });
-
+                          insertarCoordenadaRuta('');
+                          */
                           
 
                         /*  $(data).each(function (index, el) {
@@ -290,19 +344,14 @@
                                   console.log(k + " : " + v);
                               });
                           });*/
-                          
+                          /*
                       }, function (error) {
                           console.log("Error: ", error.message);
                       });
                 });
-        }
+        }*/
 
-        
-        
-        
-        
-        
-         </script>
+        </script>
 
   </head>
   <body class="claro">
@@ -325,24 +374,16 @@
 
         <input id="address" type="text" class="span3" style="margin: 0 auto;" data-provide="typeahead" data-items="4" 
                
-              data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
+              <!--data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
          <!-- data-source ="candidatos('starbucks')" />-->
-          <br/>
-           <input id="address1" type="text" class="span3" style="margin: 0 auto;" data-provide="typeahead" data-items="4" 
-               
-              data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
-          <br/>
+          
+          <button id="agregarLugar" type="button">Agregar</button>
+         <br/><br />
 
-          <input id="address2" type="text" class="span3" style="margin: 0 auto;" data-provide="typeahead" data-items="4" 
-               
-              data-source="[&quot;Alabama&quot;,&quot;Alaska&quot;,&quot;Arizona&quot;,&quot;Arkansas&quot;,&quot;California&quot;,&quot;Colorado&quot;,&quot;Connecticut&quot;,&quot;Delaware&quot;,&quot;Florida&quot;,&quot;Georgia&quot;,&quot;Hawaii&quot;,&quot;Idaho&quot;,&quot;Illinois&quot;,&quot;Indiana&quot;,&quot;Iowa&quot;,&quot;Kansas&quot;,&quot;Kentucky&quot;,&quot;Louisiana&quot;,&quot;Maine&quot;,&quot;Maryland&quot;,&quot;Massachusetts&quot;,&quot;Michigan&quot;,&quot;Minnesota&quot;,&quot;Mississippi&quot;,&quot;Missouri&quot;,&quot;Montana&quot;,&quot;Nebraska&quot;,&quot;Nevada&quot;,&quot;New Hampshire&quot;,&quot;New Jersey&quot;,&quot;New Mexico&quot;,&quot;New York&quot;,&quot;North Dakota&quot;,&quot;North Carolina&quot;,&quot;Ohio&quot;,&quot;Oklahoma&quot;,&quot;Oregon&quot;,&quot;Pennsylvania&quot;,&quot;Rhode Island&quot;,&quot;South Carolina&quot;,&quot;South Dakota&quot;,&quot;Tennessee&quot;,&quot;Texas&quot;,&quot;Utah&quot;,&quot;Vermont&quot;,&quot;Virginia&quot;,&quot;Washington&quot;,&quot;West Virginia&quot;,&quot;Wisconsin&quot;,&quot;Wyoming&quot;]">
+        <textarea id="stops" readonly="readonly">
 
-          <br/>
-
-            <button id="ruta" type="button" >Generar Ruta</button>
-         <br/>
-
-
+        </textarea>
+          <button id="ruta" type="button">Generar Ruta</button>
       </div>
 
       <div id="map" 
@@ -352,5 +393,3 @@
     </div>
   </body>
 </html>
-
-
