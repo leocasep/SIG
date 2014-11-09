@@ -42,6 +42,7 @@
     <script>
         var map, locator, pointCollection;
         var coordenadasRuta = [];
+        var featureLayerRuta = null;
 
         require([
           "esri/map", "esri/tasks/locator", "esri/graphic",
@@ -159,6 +160,10 @@
             });
         });
 
+        function prueba() {
+            featureLayerRuta.setVisible(true);
+        }
+
         function generarRuta() {
             var stops = '';
             for (var i in coordenadasRuta) {
@@ -169,7 +174,7 @@
                     var layerUrl = "http://route.arcgis.com/ArcGIS/rest/services/World/Route/NAServer/Route_World/solve";
                     var layersRequest = esriRequest({
                         url: layerUrl,
-                        content: { token: 'pbgEdBaZ8xtrPgwE6581AyppOSnz1vhv6KXFle9C-ndl2Mma9iADu5pXuALwZCJkWCIxCevBu5TKJXMYqJtAMITwQOz8U_wWC8IKr-tB06oB6QCXP0uDKPTK-24ssETzYG9vruEw0NvYoVP0j0N0-w..', stops: stops, f: "json" },
+                        content: { token: 'a3VTA2te5KGTdXBB0nAbLr8EEFk5yIFIpcx9c06JB-_AciLaBhTmWcQYizqKN2VWVtsNn_p-gc3b6KVHPjHK3n-yu7cSZ-xft8fZH2i37YCwJit-3Xt0lHeIRiat53m6WdBNm-FQ4erjigKSQ8im0Q..', stops: stops, f: "json" },
                         handleAs: "json",
                         callbackParamName: "callback"
                     });
@@ -187,6 +192,16 @@
                                   var gra = new Graphic(polilinea);
                                   map.graphics.add(gra);
 
+                                  require(["esri/layers/FeatureLayer"],
+                                      function (FeatureLayer) {
+                                          featureLayerRuta = new FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
+                                              mode: FeatureLayer.MODE_ONDEMAND,
+                                              outFields: ["*"]
+                                          });
+                                          featureLayerRuta.displayField = "notes SIG_JAPI";
+                                          featureLayerRuta.applyEdits(data['routes']['features'][0], null, null, prueba);
+                                      });
+                                  /*
                                   var routeLayer = new esri.layers.FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
                                       mode: esri.layers.FeatureLayer.MODE_ONDEMAND,
                                       outFields: ["*"]
