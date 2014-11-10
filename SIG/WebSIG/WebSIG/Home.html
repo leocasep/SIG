@@ -168,16 +168,18 @@
         });
 
         function prueba() {
-            trailLayer.visible = true;
-            require(["esri/tasks/QueryTask", "esri/tasks/Query", "esri/layers/FeatureLayer"],
-                function (QueryTask, Query, FeatureLayer) {
-                    var routeLayer = new esri.layers.FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
-                        mode: FeatureLayer.MODE_ONDEMAND,
-                        outFields: ["*"]
-                    });
-                    console.log("routeLayer: ", routeLayer);
-                });
-        }
+            var queryTask = new esri.tasks.QueryTask("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1");
+            var query = new esri.tasks.Query();
+            query.returnGeometry = true;
+            query.where = "notes = 'sig2014gr07'";
+            queryTask.execute(query, function(results) {
+                console.log("Resultado de la consulta: ", results);
+                for (var i in results.features) {
+                    routeLayer.add(results.features[i]);
+                }
+                routeLayer.show();
+            });
+        };
 
         function escribir(res) { console.log("res:", res); }
 
@@ -191,7 +193,7 @@
                     var layerUrl = "http://route.arcgis.com/ArcGIS/rest/services/World/Route/NAServer/Route_World/solve";
                     var layersRequest = esriRequest({
                         url: layerUrl,
-                        content: { token: 'LNWoYvELNy48q2wggC5PWIs0SSIvFN3qNyN937O803wnmhbtAO0G3PZExU7GdNtWL-06N05lQu5zPWv49duDpqoR7z1nRm34wIIOik53WCGVcq4XGrwHhI1fONNlunzocw30xiS0Dtab1LmNoHMzwg..', stops: stops, f: "json" },
+                        content: { token: 'oZqOj7hxiHF8WqFc-LjU_8RVY8XKVhLlyL0OSohDXr97I5Hnf7vYR8X_PiBhOSpRcfBWCYbRNaqgkTQomW2r3KQ_04Bk96dD30mg9vZnHUKq6bFXDdgjKipn_tGOm8BgCMO2zDdDCGJ-ZARjjRoT_Q..', stops: stops, f: "json" },
                         handleAs: "json",
                         callbackParamName: "callback"
                     });
@@ -218,7 +220,7 @@
                                           gra.setAttributes({
                                               notes: "sig2014gr07"
                                           });
-                                          trailLayer.applyEdits([gra], null,  null, prueba);
+                                          trailLayer.applyEdits([gra], null, null);
                                       });
                                   /*
                                   var routeLayer = new esri.layers.FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
@@ -247,6 +249,7 @@
                               }, function (error) {
                                   console.log("Error: ", error.message);
                               });
+                          prueba();
                       });
                 });
 
