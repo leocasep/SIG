@@ -42,12 +42,13 @@
     <script>
         var map, locator, pointCollection;
         var coordenadasRuta = [];
-        var featureLayerRuta = null;
+        var routeLayer = null;
+        var trailLayer = null;
 
         require([
           "esri/map", "esri/tasks/locator", "esri/graphic",
           "esri/InfoTemplate", "esri/symbols/SimpleMarkerSymbol",
-          "esri/symbols/Font", "esri/symbols/TextSymbol",
+          "esri/symbols/Font", "esri/symbols/TextSymbol", "esri/layers/GraphicsLayer", "esri/layers/FeatureLayer",
           "dojo/_base/array", "esri/Color",
           "dojo/number", "dojo/parser", "dojo/dom", "dijit/registry",
 
@@ -56,7 +57,7 @@
         ], function (
           Map, Locator, Graphic,
           InfoTemplate, SimpleMarkerSymbol,
-          Font, TextSymbol,
+          Font, TextSymbol, GraphicsLayer, FeatureLayer,
           arrayUtils, Color,
           number, parser, dom, registry
         ) {
@@ -73,7 +74,6 @@
 
             // listen for button click then geocode
             registry.byId("locate").on("click", locate);
-            
 
             map.infoWindow.resize(200, 125);
 
@@ -124,6 +124,13 @@
                     map.centerAndZoom(geom, 12);
                 }
             }
+
+            routeLayer = new GraphicsLayer();
+            trailLayer = new FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
+                mode: FeatureLayer.MODE_SELECTION
+            });
+            trailLayer.visible = false;
+            map.addLayers([routeLayer, trailLayer]);
         });
     </script>
 
@@ -161,8 +168,18 @@
         });
 
         function prueba() {
-            featureLayerRuta.setVisible(true);
+            trailLayer.visible = true;
+            require(["esri/tasks/QueryTask", "esri/tasks/Query", "esri/layers/FeatureLayer"],
+                function (QueryTask, Query, FeatureLayer) {
+                    var routeLayer = new esri.layers.FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
+                        mode: FeatureLayer.MODE_ONDEMAND,
+                        outFields: ["*"]
+                    });
+                    console.log("routeLayer: ", routeLayer);
+                });
         }
+
+        function escribir(res) { console.log("res:", res); }
 
         function generarRuta() {
             var stops = '';
@@ -174,32 +191,34 @@
                     var layerUrl = "http://route.arcgis.com/ArcGIS/rest/services/World/Route/NAServer/Route_World/solve";
                     var layersRequest = esriRequest({
                         url: layerUrl,
-                        content: { token: 'a3VTA2te5KGTdXBB0nAbLr8EEFk5yIFIpcx9c06JB-_AciLaBhTmWcQYizqKN2VWVtsNn_p-gc3b6KVHPjHK3n-yu7cSZ-xft8fZH2i37YCwJit-3Xt0lHeIRiat53m6WdBNm-FQ4erjigKSQ8im0Q..', stops: stops, f: "json" },
+                        content: { token: 'LNWoYvELNy48q2wggC5PWIs0SSIvFN3qNyN937O803wnmhbtAO0G3PZExU7GdNtWL-06N05lQu5zPWv49duDpqoR7z1nRm34wIIOik53WCGVcq4XGrwHhI1fONNlunzocw30xiS0Dtab1LmNoHMzwg..', stops: stops, f: "json" },
                         handleAs: "json",
                         callbackParamName: "callback"
                     });
                     layersRequest.then(
                       function (data) {
-                          console.log("Success: ", data);
-                           
+                          //console.log("Success: ", data);
                           require(["esri/graphic"],
                               function (Graphic) {
                                   var lineas = [];
                                   for (i = 0; i < data['routes']['features'][0]['geometry']['paths'][0].length - 1; i++) {
                                       lineas.push([data['routes']['features'][0]['geometry']['paths'][0][i], data['routes']['features'][0]['geometry']['paths'][0][i + 1]])
                                   }
-                                  var polilinea = { geometry: { paths: lineas, "spatialReference": { "wkid": 4326 } }, "symbol": { "color": [0, 255, 0, 255], "width": 5, "type": "esriSLS", "style": "esriSLSSolid" } };
+                                  var polilinea = { geometry: { paths: lineas, "spatialReference": { "wkid": 4326 } }, "symbol": { "color": [0, 255, 0, 0], "width": 5, "type": "esriSLS", "style": "esriSLSSolid" } };
                                   var gra = new Graphic(polilinea);
-                                  map.graphics.add(gra);
+                                  //map.graphics.add(gra);
 
-                                  require(["esri/layers/FeatureLayer"],
-                                      function (FeatureLayer) {
-                                          featureLayerRuta = new FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
-                                              mode: FeatureLayer.MODE_ONDEMAND,
-                                              outFields: ["*"]
+                                  require(["esri/layers/FeatureLayer", "esri/layers/FeatureTemplate"],
+                                      function (FeatureLayer, FeatureTemplate) {
+                                          //console.log("trailLayer --> ", trailLayer['types']);
+                                          var template = trailLayer.types[4].templates[0];
+                                          console.log("template: ", template);
+                                          template.prototype.attributes['notes'] = "sig2014gr07";
+                                          gra.template = template;
+                                          gra.setAttributes({
+                                              notes: "sig2014gr07"
                                           });
-                                          featureLayerRuta.displayField = "notes SIG_JAPI";
-                                          featureLayerRuta.applyEdits(data['routes']['features'][0], null, null, prueba);
+                                          trailLayer.applyEdits([gra], null,  null, prueba);
                                       });
                                   /*
                                   var routeLayer = new esri.layers.FeatureLayer("http://sampleserver5.arcgisonline.com/ArcGIS/rest/services/LocalGovernment/Recreation/FeatureServer/1", {
